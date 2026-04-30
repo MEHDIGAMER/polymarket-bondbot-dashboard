@@ -95,6 +95,28 @@
     <canvas id="equity-canvas" width="1200" height="220"></canvas>
   </section>
 
+  <!-- BUCKET BREAKDOWN — which price band actually wins -->
+  <section class="card">
+    <div class="card-title">
+      <span>Win rate by entry band</span>
+      <span class="muted small">brute-force learning — switch to whichever band wins</span>
+    </div>
+    <div class="table-wrap">
+      <table id="buckets-table">
+        <thead><tr>
+          <th>Entry band</th>
+          <th class="num">Open</th>
+          <th class="num">Resolved</th>
+          <th class="num">Wins</th>
+          <th class="num">Win rate</th>
+          <th class="num">Avg return</th>
+          <th class="num">Total P&amp;L</th>
+        </tr></thead>
+        <tbody><tr><td colspan="7" class="muted">no data yet — scanning…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
   <!-- DUAL TABLES -->
   <section class="row-2">
     <div class="card">

@@ -240,6 +240,37 @@ function paintSkips(skips) {
   `).join('');
 }
 
+function paintBuckets(buckets) {
+  const tb = $('#buckets-table tbody');
+  if (!buckets || !buckets.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="muted">no data yet — scanning…</td></tr>';
+    return;
+  }
+  // Sort by win rate descending so the winning band is at top
+  const sorted = [...buckets].sort((a, b) => {
+    const wrA = a.n > 0 ? (a.wins || 0) / Math.max(1, a.n - (a.open_count || 0)) : 0;
+    const wrB = b.n > 0 ? (b.wins || 0) / Math.max(1, b.n - (b.open_count || 0)) : 0;
+    return wrB - wrA;
+  });
+  tb.innerHTML = sorted.map((b) => {
+    const resolved = (b.n || 0) - (b.open_count || 0);
+    const wr = resolved > 0 ? (b.wins || 0) / resolved : 0;
+    const pnlClass = b.total_pnl > 0 ? 'pos' : b.total_pnl < 0 ? 'neg' : '';
+    const wrClass = wr >= 0.94 ? 'pos' : wr >= 0.5 ? 'warn' : wr > 0 ? 'neg' : '';
+    return `
+      <tr>
+        <td><strong>${escapeHtml(b.bucket || '?')}</strong></td>
+        <td class="num">${b.open_count || 0}</td>
+        <td class="num">${resolved}</td>
+        <td class="num">${b.wins || 0}</td>
+        <td class="num ${wrClass}">${resolved > 0 ? fmtPct(wr) : '—'}</td>
+        <td class="num">${b.avg_return != null ? fmtPctSigned(b.avg_return) : '—'}</td>
+        <td class="num ${pnlClass}">${fmtMoney(b.total_pnl)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
 function paintConfig(cfg) {
   if (!cfg || !cfg.risk) return;
   const r = cfg.risk;
@@ -278,14 +309,15 @@ async function refresh() {
       return;
     }
 
-    const [stats, openPos, closedPos, scans, skips, equity, config] = await Promise.all([
+    const [stats, openPos, closedPos, scans, skips, equity, config, buckets] = await Promise.all([
       window.bondbot.api('/stats'),
-      window.bondbot.api('/positions?status=OPEN&limit=50'),
-      window.bondbot.api('/positions?status=ALL&limit=100'),
+      window.bondbot.api('/positions?status=OPEN&limit=200'),
+      window.bondbot.api('/positions?status=ALL&limit=200'),
       window.bondbot.api('/scans?limit=20'),
       window.bondbot.api('/skips'),
       window.bondbot.api('/equity'),
       window.bondbot.api('/config'),
+      window.bondbot.api('/buckets'),
     ]);
 
     if (!stats.ok) {
@@ -302,6 +334,7 @@ async function refresh() {
     paintScans(scans.body.scans || []);
     paintSkips(skips.body.skips_24h || []);
     drawEquityCurve(equity.body.equity_curve || []);
+    paintBuckets(buckets.body.buckets || []);
     paintConfig(config.body);
   } catch (err) {
     setHealth(false, err.message);
