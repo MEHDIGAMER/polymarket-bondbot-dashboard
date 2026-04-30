@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src *;" />
+  <title>BondBot Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div class="brand-text">
+      <div class="brand-title">BondBot</div>
+      <div class="brand-sub">Polymarket bond strategy — live dashboard</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <span class="dot" id="health-dot"></span>
+    <span id="health-label" class="muted">connecting…</span>
+    <button class="btn-ghost" id="btn-refresh" title="refresh now (Ctrl+R also works)">↻ refresh</button>
+    <button class="btn-ghost" id="btn-settings">⚙ settings</button>
+  </div>
+</header>
+
+<main id="app">
+
+  <!-- KPI ROW -->
+  <section class="kpi-grid">
+    <div class="kpi card">
+      <div class="kpi-label">Total P&amp;L (all-time)</div>
+      <div class="kpi-value" id="kpi-pnl">—</div>
+      <div class="kpi-sub" id="kpi-pnl-sub">—</div>
+    </div>
+    <div class="kpi card">
+      <div class="kpi-label">Win rate</div>
+      <div class="kpi-value" id="kpi-winrate">—</div>
+      <div class="kpi-sub" id="kpi-winrate-sub">target ≥94%</div>
+    </div>
+    <div class="kpi card">
+      <div class="kpi-label">Avg return / position</div>
+      <div class="kpi-value" id="kpi-avgret">—</div>
+      <div class="kpi-sub" id="kpi-avgret-sub">target ≥4.5%</div>
+    </div>
+    <div class="kpi card">
+      <div class="kpi-label">Resolved positions</div>
+      <div class="kpi-value" id="kpi-resolved">—</div>
+      <div class="kpi-sub" id="kpi-resolved-sub">target ≥50</div>
+    </div>
+    <div class="kpi card">
+      <div class="kpi-label">Open paper positions</div>
+      <div class="kpi-value" id="kpi-open">—</div>
+      <div class="kpi-sub" id="kpi-open-sub">capital deployed</div>
+    </div>
+    <div class="kpi card">
+      <div class="kpi-label">Mode</div>
+      <div class="kpi-value" id="kpi-mode">—</div>
+      <div class="kpi-sub" id="kpi-mode-sub">virtual bankroll</div>
+    </div>
+  </section>
+
+  <!-- OKR / VALIDATION GATES -->
+  <section class="card okr-card">
+    <div class="card-title">
+      <span>OKR — Phase 1 → Phase 2 promotion gates</span>
+      <span class="muted small">advance to live capital only when ALL pass</span>
+    </div>
+    <div class="okr-list" id="okr-list">
+      <div class="okr-row" data-gate="resolved">
+        <div class="okr-label">≥50 resolved positions</div>
+        <div class="okr-bar"><div class="okr-fill"></div></div>
+        <div class="okr-status">—</div>
+      </div>
+      <div class="okr-row" data-gate="winrate">
+        <div class="okr-label">Win rate ≥94%</div>
+        <div class="okr-bar"><div class="okr-fill"></div></div>
+        <div class="okr-status">—</div>
+      </div>
+      <div class="okr-row" data-gate="avgret">
+        <div class="okr-label">Avg return per cycle ≥4.5%</div>
+        <div class="okr-bar"><div class="okr-fill"></div></div>
+        <div class="okr-status">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EQUITY CURVE -->
+  <section class="card chart-card">
+    <div class="card-title">
+      <span>Equity curve</span>
+      <span class="muted small">cumulative P&amp;L over closed positions</span>
+    </div>
+    <canvas id="equity-canvas" width="1200" height="220"></canvas>
+  </section>
+
+  <!-- DUAL TABLES -->
+  <section class="row-2">
+    <div class="card">
+      <div class="card-title">
+        <span>Open positions</span>
+        <span class="muted small" id="open-count">—</span>
+      </div>
+      <div class="table-wrap">
+        <table id="open-table">
+          <thead><tr>
+            <th>Side</th><th>Question</th><th class="num">Entry</th>
+            <th class="num">Size</th><th class="num">Resolves</th>
+          </tr></thead>
+          <tbody><tr><td colspan="5" class="muted">no open positions</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <span>Recent closed</span>
+        <span class="muted small" id="closed-count">—</span>
+      </div>
+      <div class="table-wrap">
+        <table id="closed-table">
+          <thead><tr>
+            <th>Status</th><th>Question</th>
+            <th class="num">Entry → Exit</th><th class="num">P&amp;L</th>
+          </tr></thead>
+          <tbody><tr><td colspan="4" class="muted">none yet — waiting for first resolution</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCANS + SKIPS -->
+  <section class="row-2">
+    <div class="card">
+      <div class="card-title">
+        <span>Scan history</span>
+        <span class="muted small">last 20 loops</span>
+      </div>
+      <div class="table-wrap">
+        <table id="scans-table">
+          <thead><tr>
+            <th>Time</th><th class="num">Markets</th>
+            <th class="num">Candidates</th><th class="num">Opened</th>
+            <th class="num">Used</th>
+          </tr></thead>
+          <tbody><tr><td colspan="5" class="muted">—</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <span>Top skip reasons (24h)</span>
+        <span class="muted small">why markets got rejected</span>
+      </div>
+      <div class="table-wrap">
+        <table id="skips-table">
+          <thead><tr>
+            <th>Reason</th><th class="num">Count</th><th class="num">Avg price</th>
+          </tr></thead>
+          <tbody><tr><td colspan="3" class="muted">—</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIG SNAPSHOT -->
+  <section class="card config-card">
+    <div class="card-title">
+      <span>Operational parameters</span>
+      <span class="muted small">read-only — change these in src/config.py and redeploy</span>
+    </div>
+    <div class="config-grid" id="config-grid"><div class="muted">—</div></div>
+  </section>
+
+</main>
+
+<!-- SETTINGS DRAWER -->
+<dialog id="settings-dialog">
+  <form method="dialog" id="settings-form">
+    <div class="dialog-title">Connection</div>
+    <label>API URL</label>
+    <input type="url" id="api-url" placeholder="http://204.168.195.17:8001" required />
+    <label>API key</label>
+    <input type="password" id="api-key" placeholder="paste your bondbot API key" required />
+    <div class="dialog-actions">
+      <button type="button" id="settings-cancel" class="btn-ghost">cancel</button>
+      <button type="submit" class="btn-primary">save</button>
+    </div>
+    <div id="settings-status" class="muted small"></div>
+  </form>
+</dialog>
+
+<script src="renderer.js"></script>
+</body>
+</html>

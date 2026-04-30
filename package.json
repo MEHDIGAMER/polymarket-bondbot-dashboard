@@ -1,0 +1,42 @@
+{
+  "name": "polymarket-bondbot-dashboard",
+  "version": "0.1.0",
+  "description": "Live monitoring dashboard for the Polymarket bond bot",
+  "main": "src/main.js",
+  "author": "MEHDIGAMER",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac --universal"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.mehdigamer.bondbot-dashboard",
+    "productName": "BondBot Dashboard",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
