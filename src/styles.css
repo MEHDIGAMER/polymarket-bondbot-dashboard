@@ -265,3 +265,49 @@ dialog input {
 }
 dialog input:focus { outline: none; border-color: var(--accent-soft); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+
+/* ─────────────────────────────────── live indicator ─────────────────────────────────── */
+
+.dot.live {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+
+/* ─────────────────────────────────── toasts ─────────────────────────────────── */
+
+#toast-stack {
+  position: fixed;
+  right: 20px; bottom: 20px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 99;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  min-width: 260px; max-width: 380px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  animation: slideIn 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast.fade-out { animation: slideOut 220ms forwards; }
+.toast.win  { border-left-color: var(--pos); }
+.toast.loss { border-left-color: var(--neg); }
+.toast.stop { border-left-color: var(--warn); }
+.toast.info { border-left-color: var(--info); }
+.toast-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.toast-body { color: var(--ink-1); font-size: 12px; line-height: 1.4; }
+.toast-pnl { font-family: var(--font-mono); font-weight: 600; font-size: 13px; }
+.toast-pnl.pos { color: var(--pos); }
+.toast-pnl.neg { color: var(--neg); }
+
+@keyframes slideIn  { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideOut { to { transform: translateX(20px); opacity: 0; } }

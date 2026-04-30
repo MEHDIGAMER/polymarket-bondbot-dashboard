@@ -82,8 +82,75 @@ async function apiFetch(pathSuffix) {
 }
 
 ipcMain.handle('settings:get', () => readSettings());
-ipcMain.handle('settings:set', (_e, s) => { writeSettings(s); return s; });
+ipcMain.handle('settings:set', (_e, s) => { writeSettings(s); streamReconnect(); return s; });
 ipcMain.handle('api:get', (_e, p) => apiFetch(p));
 
-app.whenReady().then(createWindow);
-app.on('window-all-closed', () => app.quit());
+// ─── SSE stream from the bot — runs in main process, forwards events to renderer ───
+let streamCtrl = null;
+
+async function streamConnect() {
+  const s = readSettings();
+  if (!s.apiUrl || !s.apiKey) return;
+  streamDisconnect();
+  const ctrl = new AbortController();
+  streamCtrl = ctrl;
+  const url = `${s.apiUrl.replace(/\/$/, '')}/stream?key=${encodeURIComponent(s.apiKey)}`;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: 'text/event-stream' },
+      signal: ctrl.signal,
+    });
+    if (!res.ok || !res.body) {
+      sendToRenderer('stream:status', { ok: false, error: `${res.status}` });
+      setTimeout(streamConnect, 5000);
+      return;
+    }
+    sendToRenderer('stream:status', { ok: true });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const events = buf.split('\n\n');
+      buf = events.pop();  // last partial
+      for (const block of events) {
+        const lines = block.split('\n');
+        let kind = '', data = '';
+        for (const ln of lines) {
+          if (ln.startsWith('event:')) kind = ln.slice(6).trim();
+          else if (ln.startsWith('data:')) data += ln.slice(5).trim();
+        }
+        if (kind && data) {
+          try { sendToRenderer('stream:event', { kind, data: JSON.parse(data) }); }
+          catch {}
+        }
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') sendToRenderer('stream:status', { ok: false, error: e.message });
+  } finally {
+    streamCtrl = null;
+    if (!ctrl.signal.aborted) setTimeout(streamConnect, 5000);
+  }
+}
+
+function streamDisconnect() {
+  if (streamCtrl) { streamCtrl.abort(); streamCtrl = null; }
+}
+
+function streamReconnect() {
+  streamDisconnect();
+  setTimeout(streamConnect, 100);
+}
+
+function sendToRenderer(channel, payload) {
+  if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+}
+
+app.whenReady().then(() => {
+  createWindow();
+  win.webContents.once('did-finish-load', streamConnect);
+});
+app.on('window-all-closed', () => { streamDisconnect(); app.quit(); });

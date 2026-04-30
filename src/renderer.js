@@ -351,6 +351,72 @@ $('#settings-form').addEventListener('submit', async (e) => {
   }
 });
 
+// ─────────────────────────────────── Live stream + toasts ───────────────────────────────────
+
+const toastStack = $('#toast-stack');
+let isLive = false;
+
+function toast({ title, body, kind = 'info', pnl, ttl = 5000 }) {
+  const el = document.createElement('div');
+  el.className = `toast ${kind}`;
+  let pnlHtml = '';
+  if (pnl != null) {
+    const cls = pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : '';
+    pnlHtml = `<div class="toast-pnl ${cls}">${fmtMoney(pnl)}</div>`;
+  }
+  el.innerHTML = `
+    <div class="toast-title">${escapeHtml(title)}</div>
+    <div class="toast-body">${body || ''}</div>
+    ${pnlHtml}
+  `;
+  toastStack.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('fade-out');
+    setTimeout(() => el.remove(), 250);
+  }, ttl);
+}
+
+function setLiveStatus(ok, msg) {
+  isLive = !!ok;
+  const dot = $('#health-dot');
+  dot.classList.toggle('live', isLive);
+  dot.classList.toggle('ok', !isLive && ok);
+  if (msg) $('#health-label').textContent = msg;
+}
+
+window.bondbot.onStreamStatus(({ ok, error }) => {
+  if (ok) setLiveStatus(true, 'live · streaming');
+  else setHealth(false, `stream: ${error || 'reconnecting…'}`);
+});
+
+window.bondbot.onStreamEvent(({ kind, data }) => {
+  const d = data.data || {};
+  if (kind === 'position_opened') {
+    toast({
+      title: `📥 OPENED · ${d.side}`,
+      body: (d.question || '').slice(0, 90) + ` · entry $${(+d.entry_price).toFixed(3)}`,
+      kind: 'info',
+    });
+    refresh();
+  } else if (kind === 'position_closed') {
+    const tag = d.status === 'CLOSED-WIN' ? 'win' :
+                d.status === 'CLOSED-STOPLOSS' ? 'stop' : 'loss';
+    const verb = d.status === 'CLOSED-WIN' ? '✅ WIN' :
+                  d.status === 'CLOSED-STOPLOSS' ? '🛑 STOP' : '❌ LOSS';
+    toast({
+      title: `${verb} · ${d.side}`,
+      body: (d.question || '').slice(0, 90),
+      kind: tag,
+      pnl: d.pnl,
+      ttl: 8000,
+    });
+    refresh();
+  } else if (kind === 'scan_complete') {
+    if (d.opened > 0) refresh();   // only refresh when something material happened
+  }
+  // heartbeats are silent — they just keep the connection alive
+});
+
 // ─────────────────────────────────── Boot ───────────────────────────────────
 
 setInterval(refresh, REFRESH_MS);
